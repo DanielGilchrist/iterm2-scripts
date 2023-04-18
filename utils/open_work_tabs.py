@@ -19,10 +19,10 @@ class OpenWorkTabs:
     main_session = main_pane.current_session
     await self.__run_command(main_session, self.__ssh_command())
 
-    clockin_session = await self.__split_pane(main_session, True)
-    await self.__run_command(clockin_session, "tanda_cli clockin start")
+    repo_session = await self.__split_pane(main_session, True)
+    await self.__run_command(repo_session, "cdt")
 
-    sync_session = await self.__split_pane(clockin_session, False)
+    sync_session = await self.__split_pane(repo_session, False)
     await self.__run_command(sync_session, self.__sync_command())
 
     await main_session.async_activate()
