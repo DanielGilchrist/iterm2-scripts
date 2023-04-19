@@ -1,4 +1,6 @@
 class OpenWorkTabs:
+  SYNCER_READY_STR = "INFO: Ready!"
+
   class _Commands:
     def ssh(self):
       return self.SSH
@@ -63,6 +65,25 @@ class OpenWorkTabs:
     await self.__ssh(main_session)
     # Enter command but do not run - this allows time for syncer to finish
     await self.__enter_command(main_session, "tanda-server")
+
+    await self.__wait_for_syncer(sync_session)
+
+    # run commands
+    await self.__run_command(main_session, "\n")
+    await self.__run_command(console_session, "\n")
+    await self.__run_command(worker_session, "\n")
+
+  async def __wait_for_syncer(self, session):
+    async with session.get_screen_streamer() as streamer:
+      while True:
+        screen_contents = await streamer.async_get()
+        if screen_contents is None:
+          continue
+
+        max_lines = screen_contents.number_of_lines
+        for i in range(max_lines - 1):
+          if self.SYNCER_READY_STR in screen_contents.line(i).string:
+            return
 
   async def __create_new_tab(self):
     return await self.app.current_terminal_window.async_create_tab()
