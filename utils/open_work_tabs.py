@@ -1,29 +1,42 @@
 class OpenWorkTabs:
-  AU = "au"
-  EU = "eu"
+  class Commands:
+    def ssh(self):
+      return self.SSH
+
+    def sync(self):
+      return self.SYNC
+
+  class AUCommands(Commands):
+    SSH = "tssh"
+    SYNC = "tsr"
+
+  class EUCommands(Commands):
+    SSH = "eutssh"
+    SYNC = "eutsr"
 
   @classmethod
   def init_au(klass, app):
-    return klass(app, klass.AU)
+    return klass(app, klass.AUCommands())
 
   @classmethod
   def init_eu(klass, app):
-    return klass(app, klass.EU)
+    return klass(app, klass.EUCommands())
 
-  def __init__(self, app, type):
+  def __init__(self, app, commands):
     self.app = app
-    self.type = type
+    self.ssh_command = commands.ssh()
+    self.sync_command = commands.sync()
 
   async def execute(self):
     main_pane = await self.__create_new_tab()
     main_session = main_pane.current_session
-    await self.__run_command(main_session, self.__ssh_command())
+    await self.__run_command(main_session, self.ssh_command)
 
     repo_session = await self.__split_pane(main_session, True)
     await self.__run_command(repo_session, "cdt")
 
     sync_session = await self.__split_pane(repo_session, False)
-    await self.__run_command(sync_session, self.__sync_command())
+    await self.__run_command(sync_session, self.sync_command)
 
     await main_session.async_activate()
     await self.__run_command(main_session, "tanda-server")
@@ -36,19 +49,3 @@ class OpenWorkTabs:
 
   async def __run_command(self, session, command):
     return await session.async_send_text(f'{command}\n')
-
-  def __ssh_command(self):
-    if self.type == self.EU:
-      return 'eutssh'
-    elif self.type == self.AU:
-      return 'tssh'
-    else:
-      raise Exception('Invalid type')
-
-  def __sync_command(self):
-    if self.type == self.EU:
-      return 'eutsr'
-    elif self.type == self.AU:
-      return 'tsr'
-    else:
-      raise Exception('Invalid type')
