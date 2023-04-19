@@ -79,6 +79,10 @@ class OpenWorkTabs:
   async def __export_db_type(self, session):
     return await self.__run_command(session, self.export_db_command)
 
+  async def __export_disable_spring(self, session):
+    return await self.__run_command(session, "export DISABLE_SPRING=true")
+
   async def __ssh(self, session):
     await self.__run_command(session, self.ssh_command)
+    await self.__export_disable_spring(session)
     await self.__export_db_type(session)
