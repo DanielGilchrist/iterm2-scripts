@@ -1,3 +1,6 @@
+import math
+import iterm2
+
 class OpenWorkTabs:
   SYNCER_READY_STR = "INFO: Ready!"
 
@@ -36,8 +39,8 @@ class OpenWorkTabs:
     self.export_db_command = f'export DB_CREDS_TYPE={commands.db_type()}'
 
   async def execute(self):
-    main_pane = await self.__create_new_tab()
-    main_session = main_pane.current_session
+    current_tab = await self.__create_new_tab()
+    main_session = current_tab.current_session
 
     # split vertically for console pane
     console_session = await self.__split_pane(main_session, vertical=True)
@@ -48,6 +51,10 @@ class OpenWorkTabs:
     # split horizontally for sync pane
     sync_session = await self.__split_pane(console_session, vertical=False)
     await self.__run_command(sync_session, self.sync_command)
+    sync_grid = sync_session.grid_size
+    # If we don't * 2 the width for some reason the width shrinks to about half
+    new_sync_size = iterm2.util.Size(sync_grid.width * 2, math.floor(sync_grid.height / 3.0))
+    sync_session.preferred_size = new_sync_size
 
     # back to first pane
     await main_session.async_activate()
@@ -65,6 +72,8 @@ class OpenWorkTabs:
     await self.__ssh(main_session)
     # Enter command but do not run - this allows time for syncer to finish
     await self.__enter_command(main_session, "tanda-server")
+
+    await current_tab.async_update_layout()
 
     await self.__wait_for_syncer(sync_session)
 
@@ -92,16 +101,16 @@ class OpenWorkTabs:
     return await session.async_split_pane(vertical=vertical)
 
   async def __run_command(self, session, command):
-    return await session.async_send_text(f'{command}\n')
+    await session.async_send_text(f'{command}\n')
 
   async def __enter_command(self, session, command):
-    return await session.async_send_text(command)
+    await session.async_send_text(command)
 
   async def __export_db_type(self, session):
-    return await self.__run_command(session, self.export_db_command)
+    await self.__run_command(session, self.export_db_command)
 
   async def __export_disable_spring(self, session):
-    return await self.__run_command(session, "export DISABLE_SPRING=true")
+    await self.__run_command(session, "export DISABLE_SPRING=true")
 
   async def __ssh(self, session):
     await self.__run_command(session, self.ssh_command)
