@@ -1,26 +1,26 @@
 class OpenWorkTabs:
-  class Commands:
+  class _Commands:
     def ssh(self):
       return self.SSH
 
     def sync(self):
       return self.SYNC
 
-  class AUCommands(Commands):
+  class _AUCommands(_Commands):
     SSH = "tssh"
     SYNC = "tsr"
 
-  class EUCommands(Commands):
+  class _EUCommands(_Commands):
     SSH = "eutssh"
     SYNC = "eutsr"
 
   @classmethod
   def init_au(klass, app):
-    return klass(app, klass.AUCommands())
+    return klass(app, klass._AUCommands())
 
   @classmethod
   def init_eu(klass, app):
-    return klass(app, klass.EUCommands())
+    return klass(app, klass._EUCommands())
 
   def __init__(self, app, commands):
     self.app = app
