@@ -1,4 +1,5 @@
 import math
+import iterm2
 
 class OpenWorkTabs:
   SYNCER_READY_STR = "INFO: Ready!"
@@ -50,10 +51,10 @@ class OpenWorkTabs:
     # split horizontally for sync pane
     sync_session = await self.__split_pane(console_session, vertical=False)
     await self.__run_command(sync_session, self.sync_command)
-    sync_grid_size = sync_session.grid_size
-    sync_grid_size.height = math.floor(sync_grid_size.width / 2.0)
-    raise Exception(str(sync_grid_size))
-    sync_session.preferred_size = sync_grid_size
+    sync_grid = sync_session.grid_size
+    # If we don't * 2 the width for some reason the width shrinks to about half
+    new_sync_size = iterm2.util.Size(sync_grid.width * 2, math.floor(sync_grid.height / 3.0))
+    sync_session.preferred_size = new_sync_size
 
     # back to first pane
     await main_session.async_activate()
