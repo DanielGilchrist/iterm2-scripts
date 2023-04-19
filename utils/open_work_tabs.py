@@ -39,8 +39,8 @@ class OpenWorkTabs:
     self.export_db_command = f'export DB_CREDS_TYPE={commands.db_type()}'
 
   async def execute(self):
-    main_pane = await self.__create_new_tab()
-    main_session = main_pane.current_session
+    current_tab = await self.__create_new_tab()
+    main_session = current_tab.current_session
 
     # split vertically for console pane
     console_session = await self.__split_pane(main_session, vertical=True)
@@ -73,7 +73,7 @@ class OpenWorkTabs:
     # Enter command but do not run - this allows time for syncer to finish
     await self.__enter_command(main_session, "tanda-server")
 
-    await self.__refresh_layout()
+    await current_tab.async_update_layout()
 
     await self.__wait_for_syncer(sync_session)
 
@@ -116,7 +116,3 @@ class OpenWorkTabs:
     await self.__run_command(session, self.ssh_command)
     await self.__export_disable_spring(session)
     await self.__export_db_type(session)
-
-  async def __refresh_layout(self):
-    tab = self.app.current_terminal_window.current_tab
-    await tab.async_update_layout()
