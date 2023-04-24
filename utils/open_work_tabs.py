@@ -102,17 +102,20 @@ class OpenWorkTabs:
     await self.__wait_for_text(session, self.SYNCER_READY_STR)
 
   async def __annotate_wait_for_syncer(self, session, text_to_match):
-    screen_contents = await session.async_get_screen_contents()
-    text_index = 0
-    for index in reversed(range(0, screen_contents.number_of_lines)):
-      line = screen_contents.line(index)
-      if text_to_match in line.string:
-        text_index = index
-        break
+    text_index = None
+    line_text = None
+    while line_text is None and text_index is None:
+      screen_contents = await session.async_get_screen_contents()
+      for index in reversed(range(0, screen_contents.number_of_lines)):
+        line = screen_contents.line(index)
+        if text_to_match in line.string:
+          text_index = index
+          line_text = line.string
+          break
 
     point = iterm2.util.Point
     from_ = point(0, text_index)
-    to = point(len(text_to_match) + 2, text_index)
+    to = point(len(line_text), text_index)
     point_range = iterm2.util.CoordRange(from_, to)
     await session.async_add_annotation(point_range, "Waiting on syncer before running commands...")
 
