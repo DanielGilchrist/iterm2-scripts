@@ -3,6 +3,7 @@ import iterm2
 
 class OpenWorkTabs:
   SYNCER_READY_STR = "INFO: Ready!"
+  LOGIN_MATCH_STR = "ruby@"
 
   class _Commands:
     def ssh(self):
@@ -78,15 +79,17 @@ class OpenWorkTabs:
 
   async def __ssh_and_wait_for(self, sessions_with_commands):
     for session, command in sessions_with_commands:
-      await self.__ssh_and_wait(session, command)
+      await self.__ssh(session)
+      await self.__enter_command(session, command)
 
-  async def __ssh_and_wait(self, session, command):
-    await self.__ssh(session)
-    await self.__wait_for_text(session, "ruby@")
-    await self.__enter_command(session, command)
-    await self.__annotate_wait_for_syncer(session, command)
+    for session, command in sessions_with_commands:
+      await self.__wait_for_text(session, self.LOGIN_MATCH_STR)
+      await self.__annotate_wait_for_syncer(session, command)
 
   async def __wait_for_text(self, session, text):
+    if await self.__text_already_exists(session, text):
+      return
+
     async with session.get_screen_streamer() as streamer:
       while True:
         screen_contents = await streamer.async_get()
@@ -98,14 +101,26 @@ class OpenWorkTabs:
           if text in screen_contents.line(i).string:
             return
 
+        if await self.__text_already_exists(session, text):
+          return
+
+  async def __text_already_exists(self, session, text):
+    screen_contents = await session.async_get_screen_contents()
+    max_lines = screen_contents.number_of_lines
+    for i in range(max_lines - 1):
+      if text in screen_contents.line(i).string:
+        return True
+
+    return False
+
   async def __wait_for_syncer(self, session):
     await self.__wait_for_text(session, self.SYNCER_READY_STR)
 
   async def __annotate_wait_for_syncer(self, session, text_to_match):
     screen_contents = await session.async_get_screen_contents()
     cursor_point = screen_contents.cursor_coord
-    from_ = iterm2.util.Point(cursor_point.x, cursor_point.y)
-    to = iterm2.util.Point(cursor_point.x + len(text_to_match), cursor_point.y)
+    from_ = iterm2.util.Point(cursor_point.x - len(text_to_match), cursor_point.y)
+    to = iterm2.util.Point(cursor_point.x, cursor_point.y)
     point_range = iterm2.util.CoordRange(from_, to)
     await session.async_add_annotation(point_range, "Waiting on syncer before running commands...")
 
