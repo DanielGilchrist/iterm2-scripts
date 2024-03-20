@@ -85,14 +85,13 @@ class OpenWorkTabs:
     # wait for tunnel to finish syncing
     await self.__wait_for_text(tunnel_session, self.SYNCER_READY_STR)
 
-    # run bundle and wait for it to finish
-    await self.__run_command(console_session, "bin/dev bundle")
+    # run server and wait for bundle to finish before running the rest of the commands
+    await self.__run_command(main_session, "bin/dev server")
     await self.__wait_for_text(console_session, "Connection to", " closed")
 
     # run all other commands that depend on bundle
     await asyncio.gather(
       self.__run_command(webpack_session, "bin/dev webpack"),
-      self.__run_command(main_session, "bin/dev server"),
       self.__run_command(worker_session, "bin/dev worker"),
       self.__run_command(console_session, "bin/dev console"),
     )
