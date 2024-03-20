@@ -28,32 +28,59 @@ class OpenWorkTabs:
     self.tunnel_command = commands.tunnel()
 
   async def execute(self):
+    # _________
+    # |       |
+    # |       |
+    # |       |
+    # ---------
     current_tab = await self.__create_new_tab()
     main_session = current_tab.current_session
 
-    # split vertically for console pane
+    # _________
+    # |   |   |
+    # |   |   |
+    # |   |   |
+    # ---------
     console_session = await self.__split_pane(main_session, vertical=True)
 
-    # split horizontally off console session for worker pane
-    worker_session = await self.__split_pane(console_session, vertical=False)
+    # _________
+    # |   |   |
+    # |   |___|
+    # |   |   |
+    # ---------
+    webpack_session = await self.__split_pane(console_session, vertical=False)
 
-    # split horizontally off worker session for webpack pane
-    webpack_session = await self.__split_pane(worker_session, vertical=False)
+    # back to first pane so we can split off it
+    await main_session.async_activate()
+
+    # _________
+    # |   |   |
+    # |___|___|
+    # |   |   |
+    # ---------
+    worker_session = await self.__split_pane(main_session, vertical=False)
+
+    # _________
+    # |   |   |
+    # |___|___|
+    # |___|   |
+    # ---------
+    tunnel_session = await self.__split_pane(worker_session, vertical=False)
 
     await asyncio.gather(
       self.__cdt(main_session),
       self.__cdt(console_session),
       self.__cdt(worker_session),
       self.__cdt(webpack_session),
+      self.__cdt(tunnel_session),
     )
 
-    # back to first pane
-    await main_session.async_activate()
-
-    # split horizontally from the left for tunnel pane
-    tunnel_session = await self.__split_pane(main_session, vertical=False)
-    await self.__cdt(tunnel_session)
+    # start tunnel
     await self.__run_command(tunnel_session, self.tunnel_command)
+
+    await self.divide_grid_height(tunnel_session, 2.0)
+    await self.divide_grid_height(webpack_session, 5.0)
+    await current_tab.async_update_layout()
 
     # wait for tunnel to finish syncing
     await self.__wait_for_text(tunnel_session, self.SYNCER_READY_STR)
@@ -62,7 +89,7 @@ class OpenWorkTabs:
     await self.__run_command(console_session, "bin/dev bundle")
     await self.__wait_for_text(console_session, "Connection to", " closed")
 
-    # run all other commands
+    # run all other commands that depend on bundle
     await asyncio.gather(
       self.__run_command(webpack_session, "bin/dev webpack"),
       self.__run_command(main_session, "bin/dev server"),
@@ -70,13 +97,12 @@ class OpenWorkTabs:
       self.__run_command(console_session, "bin/dev console"),
     )
 
-    # TODO: Re-implement updating layouts automatically
-    # sync_grid = tunnel_session.grid_size
-    # # If we don't * 2 the width for some reason the width shrinks to about half
-    # new_sync_size = iterm2.util.Size(sync_grid.width * 2, math.floor(sync_grid.height / 3.0))
-    # tunnel_session.preferred_size = new_sync_size
-
-    # await current_tab.async_update_layout()
+  # This is janky AF and barely works
+  async def divide_grid_height(self, session, amount):
+    session_grid = session.grid_size
+    # If we don't * 2 the width for some reason the width shrinks to about half
+    new_grid_size = iterm2.util.Size(session_grid.width * 2, math.floor(session_grid.height / amount))
+    session.preferred_size = new_grid_size
 
   async def __wait_for_text(self, session, text, second_text=None):
     if await self.__text_already_exists(session, text):
@@ -114,13 +140,13 @@ class OpenWorkTabs:
 
     return False
 
-  # async def __annotate_wait_for_syncer(self, session, text_to_match):
+  # async def __annotate_text(self, session, text_to_match, annotation_text):
   #   screen_contents = await session.async_get_screen_contents()
   #   cursor_point = screen_contents.cursor_coord
   #   from_ = iterm2.util.Point(cursor_point.x - len(text_to_match), cursor_point.y)
   #   to = iterm2.util.Point(cursor_point.x, cursor_point.y)
   #   point_range = iterm2.util.CoordRange(from_, to)
-  #   await session.async_add_annotation(point_range, "Waiting on syncer before running commands...")
+  #   await session.async_add_annotation(point_range, annotation_text)
 
   async def __create_new_tab(self):
     return await self.app.current_terminal_window.async_create_tab()
