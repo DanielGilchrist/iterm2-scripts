@@ -1,6 +1,6 @@
 import math
 import iterm2
-import subprocess
+import asyncio
 
 class OpenWorkTabs:
   SYNCER_READY_STR = "INFO: Ready!"
@@ -31,19 +31,22 @@ class OpenWorkTabs:
   async def execute(self):
     current_tab = await self.__create_new_tab()
     main_session = current_tab.current_session
-    await self.__cdt(main_session)
 
     # split vertically for console pane
     console_session = await self.__split_pane(main_session, vertical=True)
-    await self.__cdt(console_session)
 
     # split horizontally off console session for worker pane
     worker_session = await self.__split_pane(console_session, vertical=False)
-    await self.__cdt(worker_session)
 
     # split horizontally off worker session for webpack pane
     webpack_session = await self.__split_pane(worker_session, vertical=False)
-    await self.__cdt(webpack_session)
+
+    await asyncio.gather(
+      self.__cdt(main_session),
+      self.__cdt(console_session),
+      self.__cdt(worker_session),
+      self.__cdt(webpack_session),
+    )
 
     # back to first pane
     await main_session.async_activate()
@@ -51,24 +54,22 @@ class OpenWorkTabs:
     # split horizontally from the left for tunnel pane
     tunnel_session = await self.__split_pane(main_session, vertical=False)
     await self.__cdt(tunnel_session)
+    await self.__run_command(tunnel_session, self.tunnel_command)
 
     # wait for tunnel to finish syncing
     await self.__wait_for_text(tunnel_session, self.SYNCER_READY_STR)
 
     # run bundle and wait for it to finish
     await self.__run_command(console_session, "bin/dev bundle")
-    await self.__wait_for_text(console_session, "yarn install", "Done in")
+    await self.__wait_for_text(console_session, "Connection to", " closed")
 
     # run all other commands
-    await self.__run_command(webpack_session, "bin/dev webpack")
-    await self.__run_command(main_session, "bin/dev server")
-
-    # Run console command - need to wait until connection to container is closed from bundle otherwise command doesn't run
-    await self.__wait_for_text(console_session, "Connection to", " closed.")
-    await self.__enter_command(console_session, "bin/dev console")
-    await self.__run_command(console_session, "")
-
-    await self.__run_command(worker_session, "bin/dev worker")
+    await asyncio.gather(
+      self.__run_command(webpack_session, "bin/dev webpack"),
+      self.__run_command(main_session, "bin/dev server"),
+      self.__run_command(worker_session, "bin/dev worker"),
+      self.__run_command(console_session, "bin/dev console"),
+    )
 
     # TODO: Re-implement updating layouts automatically
     # sync_grid = tunnel_session.grid_size
@@ -77,7 +78,6 @@ class OpenWorkTabs:
     # tunnel_session.preferred_size = new_sync_size
 
     # await current_tab.async_update_layout()
-
 
   async def __wait_for_text(self, session, text, second_text=None):
     if await self.__text_already_exists(session, text):
