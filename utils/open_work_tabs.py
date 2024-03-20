@@ -70,8 +70,10 @@ class OpenWorkTabs:
     await self.__run_command(webpack_session, "bin/dev webpack")
     await self.__run_command(main_session, "bin/dev server")
 
+    # Run console command - need to wait until connection to container is closed from bundle otherwise command doesn't run
     await self.__wait_for_text(console_session, "Connection to", " closed.")
-    await self.__run_command(console_session, "bin/dev console")
+    await self.__enter_command(console_session, "bin/dev console")
+    await self.__run_command(console_session, "")
 
     await self.__run_command(worker_session, "bin/dev worker")
 
@@ -82,18 +84,6 @@ class OpenWorkTabs:
 
     # await current_tab.async_update_layout()
 
-    # await self.__ssh_and_wait_for((
-    #   (main_session, "tanda-server"),
-    #   (console_session, "tanda-console"),
-    #   (worker_session, "tanda-worker")
-    # ))
-
-    # await self.__wait_for_syncer(tunnel_session)
-
-    # # run commands
-    # await self.__run_command(main_session, "\n")
-    # await self.__run_command(console_session, "\n")
-    # await self.__run_command(worker_session, "\n")
 
   async def __wait_for_and_get_code(self, session):
     text = "Then enter the code:"
@@ -114,15 +104,6 @@ class OpenWorkTabs:
             code = screen_contents.line(code_index).string
             if len(code) != 0:
               return code
-
-  # async def __ssh_and_wait_for(self, sessions_with_commands):
-  #   for session, command in sessions_with_commands:
-  #     await self.__ssh(session)
-  #     await self.__enter_command(session, command)
-
-  #   for session, command in sessions_with_commands:
-  #     await self.__wait_for_text(session, self.LOGIN_MATCH_STR)
-  #     await self.__annotate_wait_for_syncer(session, command)
 
   async def __wait_for_text(self, session, text, second_text=None):
     if await self.__text_already_exists(session, text):
@@ -160,16 +141,13 @@ class OpenWorkTabs:
 
     return False
 
-  async def __wait_for_syncer(self, session):
-    await self.__wait_for_text(session, self.SYNCER_READY_STR)
-
-  async def __annotate_wait_for_syncer(self, session, text_to_match):
-    screen_contents = await session.async_get_screen_contents()
-    cursor_point = screen_contents.cursor_coord
-    from_ = iterm2.util.Point(cursor_point.x - len(text_to_match), cursor_point.y)
-    to = iterm2.util.Point(cursor_point.x, cursor_point.y)
-    point_range = iterm2.util.CoordRange(from_, to)
-    await session.async_add_annotation(point_range, "Waiting on syncer before running commands...")
+  # async def __annotate_wait_for_syncer(self, session, text_to_match):
+  #   screen_contents = await session.async_get_screen_contents()
+  #   cursor_point = screen_contents.cursor_coord
+  #   from_ = iterm2.util.Point(cursor_point.x - len(text_to_match), cursor_point.y)
+  #   to = iterm2.util.Point(cursor_point.x, cursor_point.y)
+  #   point_range = iterm2.util.CoordRange(from_, to)
+  #   await session.async_add_annotation(point_range, "Waiting on syncer before running commands...")
 
   async def __create_new_tab(self):
     return await self.app.current_terminal_window.async_create_tab()
@@ -182,12 +160,6 @@ class OpenWorkTabs:
 
   async def __enter_command(self, session, command):
     await session.async_send_text(command)
-
-  async def __export_db_type(self, session):
-    await self.__run_command(session, self.export_db_command)
-
-  async def __export_disable_spring(self, session):
-    await self.__run_command(session, "export DISABLE_SPRING=true")
 
   async def __cdt(self, session):
     await self.__run_command(session, "cdt")
