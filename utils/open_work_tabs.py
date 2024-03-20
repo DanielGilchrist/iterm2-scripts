@@ -4,7 +4,6 @@ import asyncio
 
 class OpenWorkTabs:
   SYNCER_READY_STR = "INFO: Ready!"
-  LOGIN_MATCH_STR = "ruby@"
 
   class _Commands:
     def tunnel(self):
@@ -131,9 +130,6 @@ class OpenWorkTabs:
 
   async def __run_command(self, session, command):
     await session.async_send_text(f'{command}\n')
-
-  async def __enter_command(self, session, command):
-    await session.async_send_text(command)
 
   async def __cdt(self, session):
     await self.__run_command(session, "cdt")
