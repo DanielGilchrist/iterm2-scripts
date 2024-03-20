@@ -52,13 +52,6 @@ class OpenWorkTabs:
     tunnel_session = await self.__split_pane(main_session, vertical=False)
     await self.__cdt(tunnel_session)
 
-    # Run tunnel and wait for docker auth and open in browser
-    await self.__run_command(tunnel_session, self.tunnel_command)
-    code = await self.__wait_for_and_get_code(tunnel_session)
-    if code:
-      url = f'https://device.sso.ap-southeast-2.amazonaws.com/?user_code={code}'
-      subprocess.run(["open", url])
-
     # wait for tunnel to finish syncing
     await self.__wait_for_text(tunnel_session, self.SYNCER_READY_STR)
 
@@ -77,6 +70,7 @@ class OpenWorkTabs:
 
     await self.__run_command(worker_session, "bin/dev worker")
 
+    # TODO: Re-implement updating layouts automatically
     # sync_grid = tunnel_session.grid_size
     # # If we don't * 2 the width for some reason the width shrinks to about half
     # new_sync_size = iterm2.util.Size(sync_grid.width * 2, math.floor(sync_grid.height / 3.0))
@@ -84,26 +78,6 @@ class OpenWorkTabs:
 
     # await current_tab.async_update_layout()
 
-
-  async def __wait_for_and_get_code(self, session):
-    text = "Then enter the code:"
-    already_authed_text = "Bootstrapping remote setup"
-
-    while True:
-      screen_contents = await session.async_get_screen_contents()
-      max_lines = screen_contents.number_of_lines
-
-      for i in range(max_lines - 1):
-        line_text = screen_contents.line(i).string
-
-        if already_authed_text in line_text:
-          return
-        elif text in line_text:
-          code_index = i + 2
-          if code_index <= max_lines - 1:
-            code = screen_contents.line(code_index).string
-            if len(code) != 0:
-              return code
 
   async def __wait_for_text(self, session, text, second_text=None):
     if await self.__text_already_exists(session, text):
