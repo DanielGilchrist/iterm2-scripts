@@ -87,7 +87,7 @@ class OpenWorkTabs:
 
     # run server and wait for bundle to finish before running the rest of the commands
     await self.__run_command(main_session, "bin/dev server")
-    await self.__wait_for_text(console_session, "Connection to", " closed")
+    await self.__wait_for_text(main_session, "Connection to", " closed")
 
     # run all other commands that depend on bundle
     await asyncio.gather(
