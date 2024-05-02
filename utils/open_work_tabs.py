@@ -6,14 +6,14 @@ class OpenWorkTabs:
   SYNCER_READY_STR = "INFO: Ready!"
 
   class _Commands:
-    def tunnel(self):
-      return self.TUNNEL
+    def region(self):
+      return self.REGION
 
   class _AUCommands(_Commands):
-    TUNNEL = "REGION=apac bin/tunnel"
+    REGION = "apac"
 
   class _EUCommands(_Commands):
-    TUNNEL = "REGION=eu bin/tunnel"
+    REGION = "eu"
 
   @classmethod
   def init_au(klass, app):
@@ -25,7 +25,7 @@ class OpenWorkTabs:
 
   def __init__(self, app, commands):
     self.app = app
-    self.tunnel_command = commands.tunnel()
+    self.region = commands.region()
 
   async def execute(self):
     # _________
@@ -76,7 +76,7 @@ class OpenWorkTabs:
     )
 
     # start tunnel
-    await self.__run_command(tunnel_session, self.tunnel_command)
+    await self.__run_dev_command(tunnel_session, "bin/tunnel")
 
     await self.divide_grid_height(tunnel_session, 2.0)
     await self.divide_grid_height(webpack_session, 5.0)
@@ -86,14 +86,14 @@ class OpenWorkTabs:
     await self.__wait_for_text(tunnel_session, self.SYNCER_READY_STR)
 
     # run server and wait for bundle to finish before running the rest of the commands
-    await self.__run_command(main_session, "bin/dev server")
+    await self.__run_dev_command(main_session, "bin/dev server")
     await self.__wait_for_text(main_session, "Connection to", " closed")
 
     # run all other commands that depend on bundle
     await asyncio.gather(
-      self.__run_command(webpack_session, "bin/dev webpack"),
-      self.__run_command(worker_session, "bin/dev worker"),
-      self.__run_command(console_session, "bin/dev console"),
+      self.__run_dev_command(webpack_session, "bin/dev webpack"),
+      self.__run_dev_command(worker_session, "bin/dev worker"),
+      self.__run_dev_command(console_session, "bin/dev console"),
     )
 
   # This is janky AF and barely works
@@ -155,6 +155,9 @@ class OpenWorkTabs:
 
   async def __run_command(self, session, command):
     await session.async_send_text(f'{command}\n')
+
+  async def __run_dev_command(self, session, command):
+    await self.__run_command(session, f'REGION={self.region} {command}')
 
   async def __cdt(self, session):
     await self.__run_command(session, "cdt")
