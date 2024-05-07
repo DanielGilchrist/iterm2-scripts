@@ -68,15 +68,15 @@ class OpenWorkTabs:
     tunnel_session = await self.__split_pane(worker_session, vertical=False)
 
     await asyncio.gather(
-      self.__cdt(main_session),
-      self.__cdt(console_session),
-      self.__cdt(worker_session),
-      self.__cdt(webpack_session),
-      self.__cdt(tunnel_session),
+      self.__export_region_and_cdt(main_session),
+      self.__export_region_and_cdt(console_session),
+      self.__export_region_and_cdt(worker_session),
+      self.__export_region_and_cdt(webpack_session),
+      self.__export_region_and_cdt(tunnel_session),
     )
 
     # start tunnel
-    await self.__run_dev_command(tunnel_session, "bin/tunnel")
+    await self.__run_command(tunnel_session, "bin/tunnel")
 
     await self.__divide_grid_height(tunnel_session, 2.0)
     await self.__divide_grid_height(webpack_session, 5.0)
@@ -86,14 +86,14 @@ class OpenWorkTabs:
     await self.__wait_for_text(tunnel_session, self.SYNCER_READY_STR)
 
     # run server and wait for bundle to finish before running the rest of the commands
-    await self.__run_dev_command(main_session, "bin/dev server")
+    await self.__run_command(main_session, "bin/dev server")
     await self.__wait_for_text(main_session, "Connection to", " closed")
 
     # run all other commands that depend on bundle
     await asyncio.gather(
-      self.__run_dev_command(webpack_session, "bin/dev webpack"),
-      self.__run_dev_command(worker_session, "bin/dev worker"),
-      self.__run_dev_command(console_session, "bin/dev console"),
+      self.__run_command(webpack_session, "bin/dev webpack"),
+      self.__run_command(worker_session, "bin/dev worker"),
+      self.__run_command(console_session, "bin/dev console"),
     )
 
   # This is janky AF and barely works
@@ -156,8 +156,9 @@ class OpenWorkTabs:
   async def __run_command(self, session, command):
     await session.async_send_text(f'{command}\n')
 
-  async def __run_dev_command(self, session, command):
-    await self.__run_command(session, f'REGION={self.region} {command}')
+  async def __export_region(self, session):
+    await self.__run_command(session, f'export REGION={self.region}')
 
-  async def __cdt(self, session):
+  async def __export_region_and_cdt(self, session):
+    await self.__export_region(session)
     await self.__run_command(session, "cdt")
