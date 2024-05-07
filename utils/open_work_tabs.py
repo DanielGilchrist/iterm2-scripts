@@ -78,8 +78,8 @@ class OpenWorkTabs:
     # start tunnel
     await self.__run_dev_command(tunnel_session, "bin/tunnel")
 
-    await self.divide_grid_height(tunnel_session, 2.0)
-    await self.divide_grid_height(webpack_session, 5.0)
+    await self.__divide_grid_height(tunnel_session, 2.0)
+    await self.__divide_grid_height(webpack_session, 5.0)
     await current_tab.async_update_layout()
 
     # wait for tunnel to finish syncing
@@ -97,7 +97,7 @@ class OpenWorkTabs:
     )
 
   # This is janky AF and barely works
-  async def divide_grid_height(self, session, amount):
+  async def __divide_grid_height(self, session, amount):
     session_grid = session.grid_size
     # If we don't * 2 the width for some reason the width shrinks to about half
     new_grid_size = iterm2.util.Size(session_grid.width * 2, math.floor(session_grid.height / amount))
