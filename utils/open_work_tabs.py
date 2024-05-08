@@ -103,12 +103,13 @@ class OpenWorkTabs:
     new_grid_size = iterm2.util.Size(session_grid.width * 2, math.floor(session_grid.height / amount))
     session.preferred_size = new_grid_size
 
-  async def __wait_for_text(self, session, text, second_text=None):
+  async def __wait_for_text(self, session, *texts):
+    for text in texts:
+      await self.__block_until_text(session, text)
+
+  async def __block_until_text(self, session, text):
     if await self.__text_already_exists(session, text):
-      if second_text:
-        return self.__wait_for_text(session, second_text)
-      else:
-        return
+      return
 
     async with session.get_screen_streamer() as streamer:
       while True:
@@ -119,16 +120,10 @@ class OpenWorkTabs:
         max_lines = screen_contents.number_of_lines
         for i in range(max_lines - 1):
           if text in screen_contents.line(i).string:
-            if second_text:
-              return self.__wait_for_text(session, second_text)
-            else:
-              return
+            return
 
         if await self.__text_already_exists(session, text):
-          if second_text:
-            return self.__wait_for_text(session, second_text)
-          else:
-            return
+          return
 
   async def __text_already_exists(self, session, text):
     screen_contents = await session.async_get_screen_contents()
